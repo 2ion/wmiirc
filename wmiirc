@@ -151,6 +151,8 @@ Action status
 	while status | wmiir write /rbar/status; do
 		sleep 1
 	done
+Action mpdmon
+    urxvt -fn "xft:Terminus:style=Bold:size=16pt,xft:IPAPMincho:style=Regular" -e watch -tn1 mpc -f "%artist%\ /\ %album%\ /\ %title%" &
 
 # Key Bindings
 KeyGroup XF86 and general environment
