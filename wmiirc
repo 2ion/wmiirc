@@ -170,6 +170,8 @@ Key $MODKEY-F6
     gjiten -v &
 Key $MODKEY-Control-Return
     x-www-browser &
+Key $MODKEY-Print
+    xfce4-screenshooter -fo /usr/bin/eog &
 
 KeyGroup MPD
 Key $MODKEY-F1
