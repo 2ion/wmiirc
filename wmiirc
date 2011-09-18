@@ -153,6 +153,8 @@ Action status
 	done
 Action mpdmon
     urxvt -fn "xft:Terminus:style=Bold:size=16pt,xft:IPAPMincho:style=Regular" -e watch -tn1 mpc -f "%artist%\ /\ %album%\ /\ %title%" &
+#
+#    urxvt -e watch -tn1 'mpc playlist | sed '/./=' | sed '/./N; s/\n/ /' | sed "$(($(echo 'status' | nc 127.0.0.1 6600 | grep '^song:' | cut -d' ' -f2)+1))s/.*/\n&\n/"' &
 
 # Key Bindings
 KeyGroup XF86 and general environment
