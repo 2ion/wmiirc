@@ -7,11 +7,11 @@ local n=p:read("*l")
 
 n = n and (n + 1) or 0
 if n > 0 then
-    l=io.popen("mpc playlist | sed '/./=' | sed '/./N; s/\\n/ /' | sed '" .. n .. "s/.*/\\n&\\n/'")
+    local l=io.popen("mpc playlist | sed '/./=' | sed '/./N; s/\\n/ /' | sed '" .. n .. "s/.*/\\n&\\n/'")
     print(l:read("*a"))
     l:close()
 else
-    print("mpdmon: Playlist empty or connection error.")
+    print("[mpd @ 127.0.0.1:6600] Playlist is empty")
 end
 
 p:close()
