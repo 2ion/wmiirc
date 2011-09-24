@@ -177,11 +177,13 @@ Key $MODKEY-F6
 Key $MODKEY-Control-Return
     x-www-browser &
 Key $MODKEY-Print
-    xfce4-screenshooter -fo /usr/bin/eog &
+    xfce4-screenshooter -fs /tmp/ &
 Key $MODKEY-F7
     eval $WMII_TERM -e alsamixer &
 Key $MODKEY-F8
     eval $WMII_TERM -e alsamixer -Dequal &
+Key $MODKEY-Tab
+    dash /home/joj/.wmii/wmii-clientmenu.sh &
 
 KeyGroup MPD
 Key $MODKEY-F1
