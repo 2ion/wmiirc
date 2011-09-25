@@ -183,7 +183,7 @@ Key $MODKEY-F7
 Key $MODKEY-F8
     eval $WMII_TERM -e alsamixer -Dequal &
 Key $MODKEY-Tab
-    dash /home/joj/.wmii/wmii-clientmenu.sh &
+    source /home/joj/.wmii/wmii-clientmenu.sh &
 
 KeyGroup MPD
 Key $MODKEY-F1
