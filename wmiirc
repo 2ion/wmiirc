@@ -18,9 +18,9 @@ noticebar=/rbar/!notice
 
 # Colors tuples: "<text> <background> <border>"
 export WMII_NORMCOLORS='#aaaaaa #000000 #808080'
-export WMII_FOCUSCOLORS='#ffffff #103313 #808080'
+export WMII_FOCUSCOLORS='#ffffff #670700 #808080'
 
-export WMII_BACKGROUND='/home/joj/lib/pic/2011-09/gridwall.jpeg'
+export WMII_BACKGROUND='/home/joj/lib/pic/2011-09/reddeb.png'
 export WMII_FONT='xft:Terminus:size=8pt'
 
 set -- $(echo $WMII_NORMCOLORS $WMII_FOCUSCOLORS)
@@ -51,8 +51,9 @@ wmiir write /colrules <<!
 
 # Tagging Rules
 wmiir write /tagrules <<!
-/MPlayer|VLC/ -> ~
+/MPlayer|VLC|gwaei/ -> ~
 /firefox|Nightly/ -> dactyl
+/Claws-mail/ -> claws
 !
 
 # Status Bar Info
@@ -183,7 +184,7 @@ Key $MODKEY-F7
 Key $MODKEY-F8
     eval $WMII_TERM -e alsamixer -Dequal &
 Key $MODKEY-Tab
-    source /home/joj/.wmii/wmii-clientmenu.sh &
+    dash /home/joj/.wmii/wmii-clientmenu.sh &
 
 KeyGroup MPD
 Key $MODKEY-F1
