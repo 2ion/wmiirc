@@ -155,8 +155,6 @@ Action status
 	done
 Action mpdmon
     urxvt -fn "xft:Terminus:style=Bold:size=16pt,xft:IPAPMincho:style=Regular" -e watch -tn1 mpc -f "%artist%\ /\ %album%\ /\ %title%" &
-#   I could not get the quting right with that, so I created a wrapper script using Lua
-#    urxvt -e watch -tn1 'mpc playlist | sed '/./=' | sed '/./N; s/\n/ /' | sed "$(($(echo 'status' | nc 127.0.0.1 6600 | grep '^song:' | cut -d' ' -f2)+1))s/.*/\n&\n/"' &
     urxvt -e watch -tn1 lua "${WMII_CONFPATH%%:*}/mpdmon-playlist.lua" &
     
 # Key Bindings
@@ -185,6 +183,8 @@ Key $MODKEY-F8
     eval $WMII_TERM -e alsamixer -Dequal &
 Key $MODKEY-Tab
     dash /home/joj/.wmii/wmii-clientmenu.sh &
+Key $MODKEY-c
+    eval notify-send -i /home/joj/.icons/Clarity/scalable/apps/calc.svg "$(</dev/null wimenu -pbc | awk '{ print $0,"\n" }' | bc -l)" "" &
 
 KeyGroup MPD
 Key $MODKEY-F1
