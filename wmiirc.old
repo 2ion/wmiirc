@@ -20,8 +20,8 @@ noticebar=/rbar/!notice
 export WMII_NORMCOLORS='#d62606 #000000 #000000'
 export WMII_FOCUSCOLORS='#000000 #d62606 #000000'
 
-export WMII_BACKGROUND='/home/joj/lib/pic/2011-11/comp/debian-nihon.png'
-export WMII_FONT='xft:Terminus:size=7pt'
+export WMII_BACKGROUND='/home/joj/lib/pic/2011-10/comp/gnudawn.png'
+export WMII_FONT='xft:Terminus:size=8pt'
 
 set -- $(echo $WMII_NORMCOLORS $WMII_FOCUSCOLORS)
 export WMII_TERM="x-terminal-emulator"
@@ -60,7 +60,8 @@ wmiir write /tagrules <<!
 
 # Status Bar Info
 status() {
-	echo -n $(/home/joj/.wmii/wmii-weather.sh) '|' $(cpufreq-info -fm) $(sensors | sed -n -e '3{p;q}' | cut -d' ' -f9) '|' $(acpitool -ba|gawk '/Battery/ {printf "%s ",$5}; /AC adapter/ {print $4};'|sed 's/\,//g') '|' $(date +"%a %b %d %H:%M")
+	#echo -n $(cpufreq-info -fm) $(sensors | sed -n -e '3{p;q}' | cut -d' ' -f9) '|' $(acpitool -ba|gawk '/Battery/ {printf "%s ",$5}; /AC adapter/ {print $4};'|sed 's/\,//g') '|' $(date +"%a %b %d %H:%M")
+    echo -n "Helo"
 }
 
 local_events() { true;}
@@ -187,8 +188,6 @@ Key $MODKEY-Tab
     dash /home/joj/.wmii/wmii-clientmenu.sh &
 Key $MODKEY-c
     eval notify-send -i /home/joj/.icons/Clarity/scalable/apps/calc.svg "$(</dev/null wimenu -pbc | awk '{ print $0,"\n" }' | bc -l)" "" &
-Key $MODKEY-x
-    wmiir xwrite /tag/sel/ctl colmode sel +max &
 
 KeyGroup MPD
 Key $MODKEY-F1
@@ -229,30 +228,6 @@ Key $MODKEY-Shift-$UP     # Move selected client up
 	wmiir xwrite /tag/sel/ctl send sel up
 Key $MODKEY-Shift-$DOWN   # Move selected client down
 	wmiir xwrite /tag/sel/ctl send sel down
-	
-# <h/j/k/l>   grows the window in the given direction
-# C-<h/j/k/l> shrinks the window in the given direction
-# S-<h/j/k/l> moves the window in the given direction
-#Key $MODKEY-Control-r
-#        (
-#            . wmii.sh
-#            for i in "'' grow" "Control- grow -1" "Shift- nudge"; do
-#                eval "set -- $i"; mod=$1; cmd=$2; shift 2
-#                cat 's/^            /' <<!
-#                    Key Escape
-#                            exit
-#                    Key $mod-$LEFT
-#                            wmiir xwrite /tag/sel/ctl $cmd sel sel left $*
-#                    Key $mod-$RIGHT
-#                            wmiir xwrite /tag/sel/ctl $cmd sel sel right $*
-#                    Key $mod-$UP
-#                            wmiir xwrite /tag/sel/ctl $cmd sel sel up $*
-#                    Key $mod-$DOWN
-#                            wmiir xwrite /tag/sel/ctl $cmd sel sel down $*
-#        !
-#            done | wi_events
-#            wi_eventloop
-#        ) &
 
 Key $MODKEY-Shift-space   # Toggle selected client between floating and managed layers
 	wmiir xwrite /tag/sel/ctl send sel toggle

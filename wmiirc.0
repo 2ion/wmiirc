@@ -39,6 +39,11 @@ if ! test -d "${WMII_CONFPATH%%:*}"; then
     chmod +x "${WMII_CONFPATH%%:*}/wmiirc_local"
 fi
 
+# Client history
+wmiir create /lastclient
+wmiir create /lastclientflag
+wmiir xwrite /lastclientflag 1
+
 # Menu history
 hist="${WMII_CONFPATH%%:*}/history"
 histnum=5000
@@ -60,7 +65,7 @@ wmiir write /tagrules <<!
 
 # Status Bar Info
 status() {
-	echo -n $(/home/joj/.wmii/wmii-weather.sh) '|' $(cpufreq-info -fm) $(sensors | sed -n -e '3{p;q}' | cut -d' ' -f9) '|' $(acpitool -ba|gawk '/Battery/ {printf "%s ",$5}; /AC adapter/ {print $4};'|sed 's/\,//g') '|' $(date +"%a %b %d %H:%M")
+	echo -n $(cpufreq-info -fm) $(sensors | sed -n -e '3{p;q}' | cut -d' ' -f9) '|' $(acpitool -ba|gawk '/Battery/ {printf "%s ",$5}; /AC adapter/ {print $4};'|sed 's/\,//g') '|' $(date +"%a %b %d %H:%M")
 }
 
 local_events() { true;}
@@ -72,6 +77,14 @@ echo $WMII_NORMCOLORS | wmiir create $noticebar
 events() {
 	cat <<'!'
 # Events
+Event ClientFocus
+    if [ "$(wmiir read /lastclientflag)" = "1" ]; then
+        shift
+        wmiir xwrite /lastclient "$@"
+        wmiir xwrite /lastclientflag "0"
+    else
+        wmiir xwrite /lastclientflag "1"
+    fi
 Event CreateTag
 	echo "$WMII_NORMCOLORS" "$@" | wmiir create "/lbar/$@"
 Event DestroyTag
@@ -187,8 +200,13 @@ Key $MODKEY-Tab
     dash /home/joj/.wmii/wmii-clientmenu.sh &
 Key $MODKEY-c
     eval notify-send -i /home/joj/.icons/Clarity/scalable/apps/calc.svg "$(</dev/null wimenu -pbc | awk '{ print $0,"\n" }' | bc -l)" "" &
-Key $MODKEY-x
-    wmiir xwrite /tag/sel/ctl colmode sel +max &
+Key $MODKEY-Escape
+    (
+        LASTCLIENT=$(wmiir read /lastclient)
+        if [ -n "$LASTCLIENT" ]; then
+            wmiir xwrite 
+    )&
+    
 
 KeyGroup MPD
 Key $MODKEY-F1
@@ -321,6 +339,7 @@ wmiir write /ctl <<!
 	grabmod $MODKEY
 	border 1
 !
+
 feh --bg-center "$WMII_BACKGROUND" &
 
 # Misc
