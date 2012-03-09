@@ -1,4 +1,5 @@
 #!/bin/dash -f
+# Produce a line of weather info.
 
 weather -i EDDB -v \
     | sed -n \

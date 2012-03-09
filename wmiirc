@@ -1,30 +1,28 @@
 #!/bin/dash -f
-# wmii@lilium
+# Does not work with wmii-hg
 
 wmiiscript=wmiirc # For wmii.sh
 . wmii.sh
 
-
-# Configuration Variables
 MODKEY=Mod4
 UP=k
 DOWN=j
 LEFT=h
 RIGHT=l
-
-# Bars
+CLIENT_LAST="$(mktemp)"
+CLIENT_THIS="$(mktemp)"
+SLEEPLOCK="$(mktemp)"
 noticetimeout=5
 noticebar=/rbar/!notice
 
 # Colors tuples: "<text> <background> <border>"
-export WMII_NORMCOLORS='#d62606 #000000 #000000'
-export WMII_FOCUSCOLORS='#000000 #d62606 #000000'
-
-export WMII_BACKGROUND='/home/joj/lib/pic/2011-11/comp/debian-nihon.png'
+export WMII_NORMCOLORS='#4f4f4f #1c1c1c #1c1c1c'
+export WMII_FOCUSCOLORS='#afd787 #1c1c1c #1c1c1c'
+export WMII_BARCOLORS_NORMAL='#4f4f4f #1c1c1c #1c1c1c'
+export WMII_BARCOLORS_FOCUS='#afd787 #1c1c1c #1c1c1c'
 export WMII_FONT='xft:Terminus:size=7pt'
-
-set -- $(echo $WMII_NORMCOLORS $WMII_FOCUSCOLORS)
 export WMII_TERM="x-terminal-emulator"
+set -- $(echo $WMII_NORMCOLORS $WMII_FOCUSCOLORS)
 
 if ! test -d "${WMII_CONFPATH%%:*}"; then
     mkdir "${WMII_CONFPATH%%:*}"
@@ -51,7 +49,7 @@ wmiir write /colrules <<!
 
 # Tagging Rules
 wmiir write /tagrules <<!
-/MPlayer|VLC|gwaei/ -> ~
+/MPlayer|VLC|gwaei|mplayer2/ -> ~
 /Firefox|Nightly|Vimprobable2|Luakit/ -> web
 /Claws-mail|Thunderbird|Mail/ -> mail
 /Geeqie/ -> geeqie
@@ -60,26 +58,31 @@ wmiir write /tagrules <<!
 
 # Status Bar Info
 status() {
-	echo -n $(/home/joj/.wmii/wmii-weather.sh) '|' $(cpufreq-info -fm) $(sensors | sed -n -e '3{p;q}' | cut -d' ' -f9) '|' $(acpitool -ba|gawk '/Battery/ {printf "%s ",$5}; /AC adapter/ {print $4};'|sed 's/\,//g') '|' $(date +"%a %b %d %H:%M")
+	echo -n  $(/home/$USER/.wmii/wmii-weather.cache.sh) '|' $(cpufreq-info -fm) $(sensors | sed -n -e '3{p;q}' | cut -d' ' -f9) '|' $(acpitool -ba|gawk '/Battery/ {printf "%s ",$5}; /AC adapter/ {print $4};'|sed 's/\,//g') '|' $(date +"%a %b %d %H:%M")
 }
 
 local_events() { true;}
 wi_runconf -s wmiirc_local
 
-echo $WMII_NORMCOLORS | wmiir create $noticebar
+echo $WMII_BARCOLORS_NORMAL | wmiir create $noticebar
 
 # Event processing
 events() {
 	cat <<'!'
 # Events
+Event ClientFocus
+    if [ -s "$CLIENT_THIS" ]; then
+        cat $CLIENT_THIS > $CLIENT_LAST
+    fi
+    echo "$@" > $CLIENT_THIS
 Event CreateTag
-	echo "$WMII_NORMCOLORS" "$@" | wmiir create "/lbar/$@"
+	echo "$WMII_BARCOLORS_NORMAL" "$@" | wmiir create "/lbar/$@"
 Event DestroyTag
 	wmiir remove "/lbar/$@"
 Event FocusTag
-	wmiir xwrite "/lbar/$@" "$WMII_FOCUSCOLORS" "$@"
+	wmiir xwrite "/lbar/$@" "$WMII_BARCOLORS_FOCUS" "$@"
 Event UnfocusTag
-	wmiir xwrite "/lbar/$@" "$WMII_NORMCOLORS" "$@"
+	wmiir xwrite "/lbar/$@" "$WMII_BARCOLORS_NORMAL" "$@"
 Event UrgentTag
 	shift
 	wmiir xwrite "/lbar/$@" "*$@"
@@ -151,13 +154,18 @@ Action status
 	if wmiir remove /rbar/status 2>/dev/null; then
 		sleep 2
 	fi
-	echo "$WMII_NORMCOLORS" | wmiir create /rbar/status
+	echo "$WMII_BARCOLORS_NORMAL" | wmiir create /rbar/status
 	while status | wmiir write /rbar/status; do
 		sleep 1
 	done
 Action mpdmon
-    urxvt -fn "xft:Terminus:style=Bold:size=16pt,xft:IPAPMincho:style=Regular" -e watch -tn1 mpc -f "%artist%\ /\ %album%\ /\ %title%" &
-    urxvt -e watch -tn1 lua "${WMII_CONFPATH%%:*}/mpdmon-playlist.lua" &
+    /home/$USER/.wmii/wmii-ncmpcpp.sh &
+Action pdf
+    mupdf "$(zenity --file-selection)" &
+Action tmux
+    bash /home/$USER/.wmii/tmuxatt.sh &
+Action fetchmail
+    killall -USR1 fetchmail &
     
 # Key Bindings
 KeyGroup XF86 and general environment
@@ -168,7 +176,13 @@ Key XF86AudioRaiseVolume
 Key XF86AudioMute
     amixer -c 0 sset 'Master',0 0db &
 Key XF86Sleep
-    eval xscreensaver-command -lock; qdbus --system org.freedesktop.UPower /org/freedesktop/UPower org.freedesktop.UPower.Suspend
+    SLEEPLOCK_AGE="$(( $(date +%s)-$(stat -c %Z $SLEEPLOCK) ))"
+    if [ $SLEEPLOCK_AGE -lt 30 ]; then
+        eval xscreensaver-command -lock; qdbus --system org.freedesktop.UPower /org/freedesktop/UPower org.freedesktop.UPower.Suspend
+        touch $SLEEPLOCK
+    else
+        notify-send "Won't sleep yet" "It has been < 30s since I last woke up." &
+    fi 
 Key $MODKEY-End
     xscreensaver-command -lock &
 Key $MODKEY-F5
@@ -178,17 +192,30 @@ Key $MODKEY-F6
 Key $MODKEY-Control-Return
     x-www-browser &
 Key $MODKEY-Print
-    xfce4-screenshooter -fs /tmp/ &
+    scrot -d 5 -c -q 100 &
 Key $MODKEY-F7
     eval $WMII_TERM -e alsamixer &
 Key $MODKEY-F8
     eval $WMII_TERM -e alsamixer -Dequal &
 Key $MODKEY-Tab
-    dash /home/joj/.wmii/wmii-clientmenu.sh &
+    dash /home/$USER/.wmii/wmii-clientmenu.sh &
 Key $MODKEY-c
-    eval notify-send -i /home/joj/.icons/Clarity/scalable/apps/calc.svg "$(</dev/null wimenu -pbc | awk '{ print $0,"\n" }' | bc -l)" "" &
+    eval notify-send -i /home/$USER/.icons/Clarity/scalable/apps/calc.svg "$(</dev/null wimenu -pbc | awk '{ print $0,"\n" }' | bc -l)" "" &
 Key $MODKEY-x
     wmiir xwrite /tag/sel/ctl colmode sel +max &
+Key $MODKEY-Escape
+    if [ -s "$CLIENT_LAST" ]; then
+        CLIENT_TARGET=$(wmiir ls /client | grep "$(cat $CLIENT_LAST)")
+        if [ -n "$CLIENT_TARGET" ]; then
+            TAG=$(wmiir read /client/${CLIENT_TARGET}tags | head -n1)
+            wmiir xwrite /ctl view "$TAG"
+            wmiir xwrite /tag/sel/ctl select client "${CLIENT_TARGET%%/}"
+        fi
+    else
+        echo "" > "$CLIENT_LAST"
+    fi
+Key $MODKEY-Shift-Return
+    /home/$USER/.wmii/wmii-tmuxspawn.sh &
 
 KeyGroup MPD
 Key $MODKEY-F1
@@ -199,7 +226,6 @@ Key $MODKEY-F3
     mpc prev &
 Key $MODKEY-F4
     mpc next &
-
 
 KeyGroup Moving around
 Key $MODKEY-$LEFT   # Select the client to the left
@@ -229,34 +255,37 @@ Key $MODKEY-Shift-$UP     # Move selected client up
 	wmiir xwrite /tag/sel/ctl send sel up
 Key $MODKEY-Shift-$DOWN   # Move selected client down
 	wmiir xwrite /tag/sel/ctl send sel down
-	
-# <h/j/k/l>   grows the window in the given direction
-# C-<h/j/k/l> shrinks the window in the given direction
-# S-<h/j/k/l> moves the window in the given direction
-#Key $MODKEY-Control-r
-#        (
-#            . wmii.sh
-#            for i in "'' grow" "Control- grow -1" "Shift- nudge"; do
-#                eval "set -- $i"; mod=$1; cmd=$2; shift 2
-#                cat 's/^            /' <<!
-#                    Key Escape
-#                            exit
-#                    Key $mod-$LEFT
-#                            wmiir xwrite /tag/sel/ctl $cmd sel sel left $*
-#                    Key $mod-$RIGHT
-#                            wmiir xwrite /tag/sel/ctl $cmd sel sel right $*
-#                    Key $mod-$UP
-#                            wmiir xwrite /tag/sel/ctl $cmd sel sel up $*
-#                    Key $mod-$DOWN
-#                            wmiir xwrite /tag/sel/ctl $cmd sel sel down $*
-#        !
-#            done | wi_events
-#            wi_eventloop
-#        ) &
-
 Key $MODKEY-Shift-space   # Toggle selected client between floating and managed layers
 	wmiir xwrite /tag/sel/ctl send sel toggle
 
+KeyGroup Moving through tags
+Key $MODKEY-Left
+    TAGLIST=$(wmiir ls /tag | grep -v sel)
+    THIS_TAG="$(wmiir read /tag/sel/ctl | head -n1)/"
+    LEFT=""
+    for TAG in $TAGLIST; do
+        if [ "$TAG" = "$THIS_TAG" ]; then
+            if [ -n "$LEFT" ]; then
+                wmiir xwrite /ctl view "$LEFT" &
+                break
+            fi
+        else
+            LEFT="$TAG"
+        fi
+    done
+Key $MODKEY-Right
+    TAGLIST=$(wmiir ls /tag | grep -v sel)
+    THIS_TAG="$(wmiir read /tag/sel/ctl | head -n1)/"
+    RIGHT=0
+    for TAG in $TAGLIST; do
+        if [ "$TAG" = "$THIS_TAG" ]; then
+            RIGHT=1
+        elif [ $RIGHT -eq 1 ]; then
+            wmiir xwrite /ctl view "$TAG" &
+            break
+        fi
+    done
+    
 KeyGroup Client actions
 Key $MODKEY-f # Toggle selected client's fullsceen state
 	wmiir xwrite /client/sel/ctl Fullscreen toggle
@@ -321,7 +350,6 @@ wmiir write /ctl <<!
 	grabmod $MODKEY
 	border 1
 !
-feh --bg-center "$WMII_BACKGROUND" &
 
 # Misc
 progsfile="$(wmiir namespace)/.proglist"
@@ -336,11 +364,10 @@ unset IFS
 wi_tags | while read tag
 do
 	if [ "$tag" = "$seltag" ]; then
-		echo "$WMII_FOCUSCOLORS" "$tag"
+		echo "$WMII_BARCOLORS_FOCUS" "$tag"
 	else
-		echo "$WMII_NORMCOLORS" "$tag"
+		echo "$WMII_BARCOLORS_NORMAL" "$tag"
 	fi | wmiir create "/lbar/$tag"
 done
 
 wi_eventloop
-
