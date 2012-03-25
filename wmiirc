@@ -1,9 +1,8 @@
 #!/bin/dash -f
-# Does not work with wmii-hg
-
 wmiiscript=wmiirc # For wmii.sh
 . wmii.sh
 
+# Configuration Variables
 MODKEY=Mod4
 UP=k
 DOWN=j
@@ -12,6 +11,8 @@ RIGHT=l
 CLIENT_LAST="$(mktemp)"
 CLIENT_THIS="$(mktemp)"
 SLEEPLOCK="$(mktemp)"
+
+# Bars
 noticetimeout=5
 noticebar=/rbar/!notice
 
@@ -20,22 +21,24 @@ export WMII_NORMCOLORS='#4f4f4f #1c1c1c #1c1c1c'
 export WMII_FOCUSCOLORS='#afd787 #1c1c1c #1c1c1c'
 export WMII_BARCOLORS_NORMAL='#4f4f4f #1c1c1c #1c1c1c'
 export WMII_BARCOLORS_FOCUS='#afd787 #1c1c1c #1c1c1c'
+
 export WMII_FONT='xft:Terminus:size=7pt'
 export WMII_TERM="x-terminal-emulator"
 set -- $(echo $WMII_NORMCOLORS $WMII_FOCUSCOLORS)
 
-if ! test -d "${WMII_CONFPATH%%:*}"; then
-    mkdir "${WMII_CONFPATH%%:*}"
-    res=$(wihack -type DIALOG xmessage -nearmouse -buttons Windows,Alt -print -fn $WMII_FONT \
-          "Welcome to wmii,$wi_newline$wi_newline" \
-          "Most of wmii's default key bindings make use of the$wi_newline" \
-          "Windows key, or equivalent. For keyboards lacking such$wi_newline" \
-          "a key, many users change this to the Alt key.$wi_newline$wi_newline" \
-          "Which would you prefer?")
-    [ "$res" = "Alt" ] && MODKEY=Mod1
-    echo "MODKEY=$MODKEY" >"${WMII_CONFPATH%%:*}/wmiirc_local"
-    chmod +x "${WMII_CONFPATH%%:*}/wmiirc_local"
-fi
+# Ask about MODKEY on first run
+    if ! test -d "${WMII_CONFPATH%%:*}"; then
+        mkdir "${WMII_CONFPATH%%:*}"
+        res=$(wihack -type DIALOG xmessage -nearmouse -buttons Windows,Alt -print -fn $WMII_FONT \
+              "Welcome to wmii,$wi_newline$wi_newline" \
+              "Most of wmii's default key bindings make use of the$wi_newline" \
+              "Windows key, or equivalent. For keyboards lacking such$wi_newline" \
+              "a key, many users change this to the Alt key.$wi_newline$wi_newline" \
+              "Which would you prefer?")
+        [ "$res" = "Alt" ] && MODKEY=Mod1
+        echo "MODKEY=$MODKEY" >"${WMII_CONFPATH%%:*}/wmiirc_local"
+        chmod +x "${WMII_CONFPATH%%:*}/wmiirc_local"
+    fi
 
 # Menu history
 hist="${WMII_CONFPATH%%:*}/history"
@@ -43,32 +46,35 @@ histnum=5000
 
 # Column Rules
 wmiir write /colrules <<!
-/gimp/ -> 17+83+41
-/.*/ -> 62+38 # Golden Ratio
+    /gimp/ -> 17+83+41
+    /.*/ -> 62+38 # Golden Ratio
 !
 
 # Tagging Rules
-wmiir write /tagrules <<!
-/MPlayer|VLC|gwaei|mplayer2/ -> ~
-/Firefox|Nightly|Vimprobable2|Luakit/ -> web
-/Claws-mail|Thunderbird|Mail/ -> mail
-/Geeqie/ -> geeqie
-/Pidgin|Xchat/ -> chat
+wmiir write /rules <<!
+    /^Pidgin:/ allow=+activate
+    /MPlayer|VLC|mplayer2/ floating=on
+    /Firefox|Nightly|Luakit/ tags=-sel+web
+    /Geeqie/ tags=-sel+geeqie
+    /Pidgin|Xchat/ tags=-sel+chat
+    /^ROX-Filer:/ group=0
 !
 
 # Status Bar Info
 status() {
-	echo -n  $(/home/$USER/.wmii/wmii-weather.cache.sh) '|' $(cpufreq-info -fm) $(sensors | sed -n -e '3{p;q}' | cut -d' ' -f9) '|' $(acpitool -ba|gawk '/Battery/ {printf "%s ",$5}; /AC adapter/ {print $4};'|sed 's/\,//g') '|' $(date +"%a %b %d %H:%M")
+	echo -n label $(/home/$USER/.wmii/wmii-weather.cache.sh) '|' $(cpufreq-info -fm) $(sensors | sed -n -e '3{p;q}' | cut -d' ' -f9) '|' $(acpitool -ba|gawk '/Battery/ {printf "%s ",$5}; /AC adapter/ {print $4};'|sed 's/\,//g') '|' $(date +"%a %b %d %H:%M")
 }
 
-local_events() { true;}
-wi_runconf -s wmiirc_local
+# Generic overridable startup details
+startup() { witray & }
 
-echo $WMII_BARCOLORS_NORMAL | wmiir create $noticebar
+wi_runconf -s wmiirc_local
+startup
+
+echo colors $WMII_BARCOLORS_NORMAL | wmiir create $noticebar
 
 # Event processing
-events() {
-	cat <<'!'
+wi_events <<'!'
 # Events
 Event ClientFocus
     if [ -s "$CLIENT_THIS" ]; then
@@ -76,19 +82,19 @@ Event ClientFocus
     fi
     echo "$@" > $CLIENT_THIS
 Event CreateTag
-	echo "$WMII_BARCOLORS_NORMAL" "$@" | wmiir create "/lbar/$@"
+	echo colors "$WMII_BARCOLORS_NORMAL$wi_newline" label "$@" | wmiir create "/lbar/$@"
 Event DestroyTag
 	wmiir remove "/lbar/$@"
 Event FocusTag
-	wmiir xwrite "/lbar/$@" "$WMII_BARCOLORS_FOCUS" "$@"
+	wmiir xwrite "/lbar/$@" colors "$WMII_BARCOLORS_FOCUS"
 Event UnfocusTag
-	wmiir xwrite "/lbar/$@" "$WMII_BARCOLORS_NORMAL" "$@"
+	wmiir xwrite "/lbar/$@" colors "$WMII_BARCOLORS_NORMAL"
 Event UrgentTag
 	shift
-	wmiir xwrite "/lbar/$@" "*$@"
+	wmiir xwrite "/lbar/$@" label "*$@"
 Event NotUrgentTag
 	shift
-	wmiir xwrite "/lbar/$@" "$@"
+	wmiir xwrite "/lbar/$@" label "$@"
 Event LeftBarClick LeftBarDND
 	shift
 	wmiir xwrite /ctl view "$@"
@@ -97,7 +103,7 @@ Event Unresponsive
 		client=$1; shift
 		msg="The following client is not responding. What would you like to do?$wi_newline"
 		resp=$(wihack -transient $client \
-			      xmessage -nearmouse -buttons Kill,Wait -print
+			      xmessage -nearmouse -buttons Kill,Wait -print \
 			      -fn "${WMII_FONT%%,*}" "$msg $(wmiir read /client/sel/label)")
 		if [ "$resp" = Kill ]; then
 			wmiir xwrite /client/$client/ctl slay &
@@ -123,19 +129,12 @@ Event ClientMouseDown
 Menu LBar-3-Delete
 	tag=$1; clients=$(wmiir read "/tag/$tag/index" | awk '/[^#]/{print $2}')
 	for c in $clients; do
-		if [ "$tag" = "$(wmiir read /client/$c/tags)" ]; then
-			wmiir xwrite /client/$c/ctl kill
-		else
-			wmiir xwrite /client/$c/tags -$tag
+		if [ "$tag" = "$(wmiir read /client/$c/tags)" ]
+		then wmiir xwrite /client/$c/ctl kill
+		else wmiir xwrite /client/$c/ctl tags -$tag
 		fi
-		if [ "$tag" = "$(wi_seltag)" ]; then
-			newtag=$(wi_tags | awk -v't='$tag '
-				$1 == t { if(!l) getline l
-					  print l
-					  exit }
-				{ l = $0 }')
-			wmiir xwrite /ctl view $newtag
-		fi
+		[ "$tag" = "$(wi_seltag)" ] &&
+			wmiir xwrite /ctl view $(wi_tags | wi_nexttag)
 	done
 Event LeftBarMouseDown
 	wi_fnmenu LBar "$@" &
@@ -154,7 +153,7 @@ Action status
 	if wmiir remove /rbar/status 2>/dev/null; then
 		sleep 2
 	fi
-	echo "$WMII_BARCOLORS_NORMAL" | wmiir create /rbar/status
+	echo colors "$WMII_NORMCOLORS" | wmiir create /rbar/status
 	while status | wmiir write /rbar/status; do
 		sleep 1
 	done
@@ -166,7 +165,7 @@ Action tmux
     bash /home/$USER/.wmii/tmuxatt.sh &
 Action fetchmail
     killall -USR1 fetchmail &
-    
+
 # Key Bindings
 KeyGroup XF86 and general environment
 Key XF86AudioLowerVolume
@@ -177,7 +176,7 @@ Key XF86AudioMute
     amixer -c 0 sset 'Master',0 0db &
 Key XF86Sleep
     SLEEPLOCK_AGE="$(( $(date +%s)-$(stat -c %Z $SLEEPLOCK) ))"
-    if [ $SLEEPLOCK_AGE -lt 30 ]; then
+    if [ $SLEEPLOCK_AGE -gt 30 ]; then
         eval xscreensaver-command -lock; qdbus --system org.freedesktop.UPower /org/freedesktop/UPower org.freedesktop.UPower.Suspend
         touch $SLEEPLOCK
     else
@@ -255,43 +254,16 @@ Key $MODKEY-Shift-$UP     # Move selected client up
 	wmiir xwrite /tag/sel/ctl send sel up
 Key $MODKEY-Shift-$DOWN   # Move selected client down
 	wmiir xwrite /tag/sel/ctl send sel down
+
 Key $MODKEY-Shift-space   # Toggle selected client between floating and managed layers
 	wmiir xwrite /tag/sel/ctl send sel toggle
 
-KeyGroup Moving through tags
-Key $MODKEY-Left
-    TAGLIST=$(wmiir ls /tag | grep -v sel)
-    THIS_TAG="$(wmiir read /tag/sel/ctl | head -n1)/"
-    LEFT=""
-    for TAG in $TAGLIST; do
-        if [ "$TAG" = "$THIS_TAG" ]; then
-            if [ -n "$LEFT" ]; then
-                wmiir xwrite /ctl view "$LEFT" &
-                break
-            fi
-        else
-            LEFT="$TAG"
-        fi
-    done
-Key $MODKEY-Right
-    TAGLIST=$(wmiir ls /tag | grep -v sel)
-    THIS_TAG="$(wmiir read /tag/sel/ctl | head -n1)/"
-    RIGHT=0
-    for TAG in $TAGLIST; do
-        if [ "$TAG" = "$THIS_TAG" ]; then
-            RIGHT=1
-        elif [ $RIGHT -eq 1 ]; then
-            wmiir xwrite /ctl view "$TAG" &
-            break
-        fi
-    done
-    
 KeyGroup Client actions
 Key $MODKEY-f # Toggle selected client's fullsceen state
 	wmiir xwrite /client/sel/ctl Fullscreen toggle
 Key $MODKEY-Shift-c # Close client
 	wmiir xwrite /client/sel/ctl kill
-Key $MODKEY-Shift-x #xkill
+Key $MODKEY-Shift-x
     xkill &
 
 KeyGroup Changing column modes
@@ -306,9 +278,7 @@ KeyGroup Running programs
 Key $MODKEY-a      # Open wmii actions menu
 	action $(wi_actions | wimenu -h "${hist}.actions" -n $histnum) &
 Key $MODKEY-p      # Open program menu
-	eval wmiir setsid "$(wimenu -p'$' -h "${hist}.progs" -n $histnum <$progsfile)" &
-Key $MODKEY-Control-p # Run a program per gksu
-    eval "wimenu -p'#' <$progsfile | xargs gksu -gS" &
+	eval wmiir setsid "$(wimenu -h "${hist}.progs" -n $histnum <$progsfile)" &
 
 Key $MODKEY-Return # Launch a terminal
 	eval wmiir setsid $WMII_TERM &
@@ -326,21 +296,24 @@ Key $MODKEY-Control-t # Toggle all other key bindings
 
 KeyGroup Tag actions
 Key $MODKEY-t       # Change to another tag
-	(tag=$(wi_tags | wimenu -h "${hist}.tags" -n 50) && wmiir xwrite /ctl view $tag) &
+	wmiir xwrite /ctl view $(wi_tags | wimenu -h "${hist}.tags" -n 50) &
 Key $MODKEY-Shift-t # Retag the selected client
-	c=$(wi_selclient)
-	(tag=$(wi_tags | wimenu -h "${hist}.tags" -n 50) && wmiir xwrite /client/$c/tags $tag) &
+	# Assumes left-to-right order of evaluation
+	wmiir xwrite /client/$(wi_selclient)/ctl tags $(wi_tags | wimenu -h "${hist}.tags" -n 50) &
+Key $MODKEY-period	    # Move to the next tag
+	wmiir xwrite /ctl view $(wi_tags | wi_nexttag)
+Key $MODKEY-comma	    # Move to the previous tag
+	wmiir xwrite /ctl view $(wi_tags | sort -r | wi_nexttag)
 !
 	for i in 0 1 2 3 4 5 6 7 8 9; do
-		cat <<!
+		wi_events <<!
 Key $MODKEY-$i		 # Move to the numbered view
 	wmiir xwrite /ctl view "$i"
 Key $MODKEY-Shift-$i     # Retag selected client with the numbered tag
-	wmiir xwrite /client/sel/tags "$i"
+	wmiir xwrite /client/sel/ctl tags "$i"
 !
-	done
-}
-wi_events events local_events
+done
+wi_events -e
 
 # WM Configuration
 wmiir write /ctl <<!
@@ -354,20 +327,23 @@ wmiir write /ctl <<!
 # Misc
 progsfile="$(wmiir namespace)/.proglist"
 action status &
-wi_proglist "$PATH:/usr/sbin" >$progsfile &
+wi_proglist $PATH >$progsfile &
 
 # Setup Tag Bar
 IFS="$wi_newline"
-wmiir rm $(wmiir ls /lbar | sed 's,^,/lbar/,') >/dev/null
+wmiir rm $(wmiir ls -p /lbar) >/dev/null
 seltag=$(wmiir read /tag/sel/ctl | sed 1q)
 unset IFS
 wi_tags | while read tag
 do
 	if [ "$tag" = "$seltag" ]; then
-		echo "$WMII_BARCOLORS_FOCUS" "$tag"
+		echo colors "$WMII_FOCUSCOLORS"
+		echo label $tag
 	else
-		echo "$WMII_BARCOLORS_NORMAL" "$tag"
+		echo colors "$WMII_NORMCOLORS"
+		echo label $tag
 	fi | wmiir create "/lbar/$tag"
 done
 
 wi_eventloop
+
